@@ -1,10 +1,16 @@
 # importing libraries
 import streamlit as st
+import openai
 from transformers import VisionEncoderDecoderModel, ViTFeatureExtractor, AutoTokenizer
 from itertools import cycle
 from tqdm import tqdm
 from PIL import Image
 import torch
+
+
+
+openai.api_key = open('key.txt','r').read().strip('\n')
+openai_model = "text-davinci-002"
 
 
 # pre trained object creation model, tokenizer and processor from HuggingFace
@@ -48,6 +54,29 @@ def prediction(img_list):
 
     return predict
 
+def caption_generator(des):
+
+    caption_prompt = ('''Please generate three unique and creative captions to use on social media for a photo that shows 
+    '''+des+'''. The captions should be fun and creative.
+    Captions:
+    1.
+    2.
+    3.
+    ''')
+    
+    # Caption generation
+    response = openai.Completion.create(
+    engine = openai_model,
+    prompt = caption_prompt,
+    max_tokens = (100*3),
+    n = 1,
+    stop = None,
+    temperature = 0.7,
+    )
+    
+    caption = response.choices[0].text.strip().split("\n") 
+    return(caption)
+    
 # we are creating the sample image for the intereface to display
 def examples():
     
@@ -67,8 +96,13 @@ def examples():
         if next(colms).button("Generate",key=i): 
             
             description = prediction([sp])
-            st.subheader("Caption for the Image:")
-            st.write(description[0])            
+            st.subheader("Description for the Image:")
+            st.write(description[0])  
+
+            st.subheader("Captions for this image are:")
+            captions=caption_generator(description[0]) # Function call to generate caption
+            for caption in captions: # Present Captions
+                st.write(caption)          
 
 # creating the uploader on the interface
 def upload():
@@ -87,6 +121,11 @@ def upload():
                 st.subheader("Description for the Image:")
                 for i,caption in enumerate(description):
                     st.write(caption)
+
+                st.subheader("Captions for this image are:")
+                captions = caption_generator(description[0]) # Function call to generate caption
+                for caption in captions: # Present Captions
+                    st.write(caption)
         # except is created if the image is not upload and click the genereator button 
         except IndexError:
             st.write('Image is not uploaded please try upload the image and generate again')
@@ -95,7 +134,7 @@ def main():
     # title on the tab
     st.set_page_config(page_title="Caption generation") 
     # title of the page
-    st.title("Get Captions for your Image")
+    st.title("Get multiple Captions for your Image")
     
     # creating two tab side by side one for uploading and another for sample 
     tab1, tab2= st.tabs(["Upload Image", "Examples"])
